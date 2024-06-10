@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel='stylesheet' href="static/style.css">
+    <style>
+        /* Additional inline styles for the image */
+        img {
+            width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto; /* Center the image */
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>weather details</h1>
+    </header>
+    <main>
+        <section>
+            <p>This website provides information about weather. You can search by weather  for details. To access the details, you need to login. If you don't have an account, you can sign up.</p>
+            <img src="https://images.fineartamerica.com/images/artworkimages/mediumlarge/2/brash-ice-joshua-bozarth.jpg" alt="weather Image">
+        </section>
+        <section class="container">
+            <h2>Login</h2>
+            <form action="/login" method="post">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" placeholder="Your email" required>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" placeholder="Your password" required>
+                <button type="submit">Login</button>
+            </form>
+            <p>Don't have an account? <a href="/signup">Sign up</a></p>
+        </section>
+    </main>
+</body>
+</html>

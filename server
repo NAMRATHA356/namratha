@@ -1,0 +1,120 @@
+const express=require('express');
+const session=require('express-session');
+const path=require('path');
+const bcrypt=require('bcrypt');
+const bodyparser=require('body-parser');
+const app=express();
+const port=3000;
+const admin = require('firebase-admin');
+
+const serviceAccount=require('./key-2.json');
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+const db = admin.firestore();
+app.set('views', __dirname + '/views');
+app.set('view engine','ejs');
+
+app.use(bodyparser.json());
+app.use(bodyparser.urlencoded({extended:true}));
+
+app.use(session({
+    secret:'secrect',
+    resave:false,
+    saveUninitialized:true
+}));
+//using static file
+app.use('/static',express.static(path.join(__dirname,'public')));
+
+//signup page
+app.get('/signup',function(req,res){
+    res.render('signup');
+});
+
+//signup route
+app.post('/signup',async(req,res)=>{
+    const {username,email,password}=req.body;
+    const hashing=await bcrypt.hash(password,10);
+    await db.collection('rate').doc(email).set({
+        username,
+        email,
+        password:hashing,
+    });
+    res.redirect('/login')
+});
+
+//login page
+app.get('/login',function(req,res){
+    res.render('login');
+});
+
+//loginroute
+app.post('/login',async (req,res)=>{
+    const {email,password}=req.body;
+    const userinfo=await db.collection('rate').doc(email).get();
+    if(!userinfo.exists){
+        res.send('user does not exist ');
+    };
+    const doc=userinfo.data();
+    const match= await bcrypt.compare(password,doc.password);
+    if(match){
+        req.session.userId=userinfo.id;
+        req.session.username=userinfo.username;
+        res.redirect('/dashboard');
+    }else{
+        res.send('landidpage.ejs');
+    }
+});
+
+
+// Middleware
+app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true }));
+app.set('view engine', 'ejs');
+
+// Routes
+app.get('/', (req, res) => {
+  res.render('page');
+});
+app.get('/dashboard',(req,res)=>{
+    if(!req.session.userId){
+        res.redirect('/login');
+    }
+    else{
+        res.render('page');
+    }
+});
+
+app.post('/weather', async (req, res) => {
+  const city = req.body.city;
+  const tomorrowApiKey = 'apikey=nwG1lRqGY5ie2VD5AtUQ2JzXad8gWOME';
+  const tomorrowWeatherUrl = (`https://api.tomorrow.io/v4/weather/forecast?location=${city}&apikey=${tomorrowApiKey}`);
+
+  try {
+    const tomorrowResponse = await axios.get(tomorrowWeatherUrl);
+    const tomorrowWeatherData = tomorrowResponse.data;
+
+    // Extract relevant weather details from the Tomorrow.io API response
+    const relevantWeatherData = {
+      cloudBase: tomorrowWeatherData.timelines.minutely[0].values.cloudBase,
+      cloudCeiling: tomorrowWeatherData.timelines.minutely[0].values.cloudCeiling,
+      cloudCover: tomorrowWeatherData.timelines.minutely[0].values.cloudCover,
+      dewPoint: tomorrowWeatherData.timelines.minutely[0].values.dewPoint,
+      freezingRainIntensity: tomorrowWeatherData.timelines.minutely[0].values.freezingRainIntensity,
+      humidity: tomorrowWeatherData.timelines.minutely[0].values.humidity,
+    };
+
+    // Save relevant weather details to Firestore
+    await db.collection('weather').add(relevantWeatherData);
+
+    res.render('result', { weather: relevantWeatherData });
+  } catch (tomorrowError) {
+    console.error('Error fetching Tomorrow.io weather data:', tomorrowError);
+    res.render('result', { weather: null });
+  }
+});
+
+app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});
